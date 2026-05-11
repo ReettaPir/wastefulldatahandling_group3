@@ -75,13 +75,14 @@ def add_grade():
 
     student_found = False
 
-    for a student in students:
+    for student in students:
         if student["student_number"] == student_number:
             student["grades"].append({
                 "course": course,
                 "grade": grade
             })
             student_found = True
+            break
 
     if student_found:
         save_students(students)
@@ -102,6 +103,7 @@ def search_student():
     for student in students:
         if student["student_number"] == student_number:
             found_student = student
+            break
 
     end_time = time.perf_counter()
 

@@ -1,10 +1,15 @@
-#Imports
-import json 
+# Imports
+import json
 import os
 import time
 
 DATA_FILE = "students.json"
+STUDENTS = []   # Global in-memory list
 
+
+# -----------------------------
+# Data loading / saving
+# -----------------------------
 
 def create_data_file_if_missing():
     if not os.path.exists(DATA_FILE):
@@ -12,15 +17,22 @@ def create_data_file_if_missing():
             json.dump([], file)
 
 
-def load_students():
+def load_once():
+    """Load students only once at program start."""
+    global STUDENTS
     with open(DATA_FILE, "r") as file:
-        return json.load(file)
+        STUDENTS = json.load(file)
 
 
-def save_students(students):
+def save():
+    """Save global STUDENTS list to file."""
     with open(DATA_FILE, "w") as file:
-        json.dump(students, file, indent=4)
+        json.dump(STUDENTS, file, indent=4)
 
+
+# -----------------------------
+# Login
+# -----------------------------
 
 def login():
     username = "admin"
@@ -37,19 +49,19 @@ def login():
             print("Incorrect username or password. Please try again.")
 
 
+# -----------------------------
+# Student operations
+# -----------------------------
+
 def add_student():
+    global STUDENTS
+
     student_number = input("Enter student number: ")
     name = input("Enter student name: ")
     contact = input("Enter student contact information: ")
 
-    students = load_students()
-
-    duplicate_found = False
-    for student in students:
-        if student["student_number"] == student_number:
-            duplicate_found = True
-
-    if duplicate_found:
+    # Check duplicates
+    if any(s["student_number"] == student_number for s in STUDENTS):
         print("Student number already exists.")
         return
 
@@ -60,35 +72,26 @@ def add_student():
         "grades": []
     }
 
-    students.append(new_student)
-    save_students(students)
-
+    STUDENTS.append(new_student)
+    save()
     print("Student added.")
 
 
 def add_grade():
+    global STUDENTS
+
     student_number = input("Enter student number: ")
     course = input("Enter course name: ")
     grade = input("Enter grade: ")
 
-    students = load_students()
-
-    student_found = False
-
-    for student in students:
+    for student in STUDENTS:
         if student["student_number"] == student_number:
-            student["grades"].append({
-                "course": course,
-                "grade": grade
-            })
-            student_found = True
-            break
+            student["grades"].append({"course": course, "grade": grade})
+            save()
+            print("Grade added.")
+            return
 
-    if student_found:
-        save_students(students)
-        print("Grade added.")
-    else:
-        print("Student not found.")
+    print("Student not found.")
 
 
 def search_student():
@@ -96,14 +99,7 @@ def search_student():
 
     start_time = time.perf_counter()
 
-    students = load_students()
-
-    found_student = None
-
-    for student in students:
-        if student["student_number"] == student_number:
-            found_student = student
-            break
+    found_student = next((s for s in STUDENTS if s["student_number"] == student_number), None)
 
     end_time = time.perf_counter()
 
@@ -120,18 +116,15 @@ def search_student():
 
 
 def display_all_students():
-    students = load_students()
-
-    if not students:
+    if not STUDENTS:
         print("No students found.")
         return
 
     print("All students:")
 
-    for i in range(len(students)):
-        sorted_students = sorted(students, key=lambda student: student["name"])
-        student = sorted_students[i]
+    sorted_students = sorted(STUDENTS, key=lambda s: s["name"])
 
+    for student in sorted_students:
         print(f"Student Number: {student['student_number']}")
         print(f"Name: {student['name']}")
         print(f"Contact: {student['contact']}")
@@ -140,51 +133,36 @@ def display_all_students():
 
 
 def count_total_grades():
-    students = load_students()
-
-    total = 0
-
-   for student in students:
-    for grade in student["grades"]:
-        total += 1
-
+    total = sum(len(s["grades"]) for s in STUDENTS)
     print(f"Total number of grades: {total}")
 
 
 def display_course_summary():
-    students = load_students()
-
     course_counts = {}
 
-    for student in students:
+    for student in STUDENTS:
         for grade in student["grades"]:
             course = grade["course"]
-
-            if course not in course_counts:
-                course_counts[course] = 0
-
-            course_counts[course] += 1
+            course_counts[course] = course_counts.get(course, 0) + 1
 
     print("Course summary:")
-
     for course, count in course_counts.items():
         print(f"{course}: {count} grade(s)")
 
 
 def save_backup():
-    students = load_students()
-
-    json_text = json.dumps(students)
-    copied_students = json.loads(json_text)
-
     with open("students_backup.json", "w") as file:
-        json.dump(copied_students, file, indent=4)
-
+        json.dump(STUDENTS, file, indent=4)
     print("Backup saved.")
 
 
+# -----------------------------
+# Main program
+# -----------------------------
+
 def main():
     create_data_file_if_missing()
+    load_once()
     login()
 
     while True:
